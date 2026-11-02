@@ -16,6 +16,7 @@ class DLSSG_Dx12 : public virtual IFGFeature_Dx12
 
     ID3D12Fence* dlssgFence[BUFFER_COUNT] = {};
     UINT64 lastOptionFrame = 0;
+    bool _resourcesRetained = false; // Deactivate left DLSS-G's resources for the next Activate
 
     bool Dispatch();
 

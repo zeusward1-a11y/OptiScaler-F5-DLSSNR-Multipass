@@ -1032,6 +1032,8 @@ class NVNGXProxy
         return _module.VULKAN_GetFeatureInstanceExtensionRequirements;
     }
 
+    static PFN_VULKAN_RequiredExtensions VULKAN_RequiredExtensions() { return _module.VULKAN_RequiredExtensions; }
+
     static PFN_VULKAN_GetFeatureRequirements VULKAN_GetFeatureRequirements()
     {
         return _module.VULKAN_GetFeatureRequirements;

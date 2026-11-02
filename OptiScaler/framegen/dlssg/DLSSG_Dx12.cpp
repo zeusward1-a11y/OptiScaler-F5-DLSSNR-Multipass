@@ -298,7 +298,13 @@ void DLSSG_Dx12::Deactivate()
         sl::DLSSGOptions options {};
         options.mode = sl::DLSSGMode::eOff;
         options.queueParallelismMode = sl::DLSSGQueueParallelismMode::eBlockPresentingClientQueue;
+        // Upscaler input pauses frame generation whenever the game skips its upscaler for a frame (menus, map, camera
+        // cuts). Without this DLSS-G frees all its resources each time and the next Activate stalls the present for
+        // 150-190 ms while it allocates them again (seen in Tears of the Kingdom, Vulkan bridge). The menu interlock
+        // in Streamline_Hooks already turns DLSS-G off this way.
+        options.flags |= sl::DLSSGFlags::eRetainResourcesWhenOff;
         StreamlineProxy::DLSSGSetOptions()(viewport, options); // Potential crash point on exit
+        _resourcesRetained = true;
 
         sl::ReflexOptions reflexConst = {};
         reflexConst.mode = sl::ReflexMode::eOff;
@@ -312,6 +318,17 @@ void DLSSG_Dx12::Deactivate()
 void DLSSG_Dx12::DestroyFGContext()
 {
     Deactivate();
+
+    // The context goes away: let DLSS-G free what Deactivate kept
+    if (_resourcesRetained && StreamlineProxy::DLSSGSetOptions() != nullptr)
+    {
+        sl::DLSSGOptions options {};
+        options.mode = sl::DLSSGMode::eOff;
+        options.queueParallelismMode = sl::DLSSGQueueParallelismMode::eBlockPresentingClientQueue;
+        StreamlineProxy::DLSSGSetOptions()(viewport, options);
+        _resourcesRetained = false;
+    }
+
     ReleaseObjects();
 }
 

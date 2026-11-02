@@ -153,6 +153,41 @@ static void UpdateInitPaths(NVSDK_NGX_FeatureCommonInfo* InFeatureInfo)
     }
 }
 
+// Older NGX entry point (nvsdk_ngx_vk.h "NVSDK_NGX_RequiredExtensions"). Some Vulkan programs still look it up next to
+// the others and leave DLSS off when it is missing (the Tears of the Kingdom PC recomp does), which also leaves frame
+// generation without the upscaler's inputs. Forward to NVIDIA's; without it report no extensions, as the
+// GetFeature*ExtensionRequirements fallbacks below do for a missing NVNGX.
+NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_VULKAN_RequiredExtensions(unsigned int* OutInstanceExtCount,
+                                                                   const char*** OutInstanceExts,
+                                                                   unsigned int* OutDeviceExtCount,
+                                                                   const char*** OutDeviceExts)
+{
+    LOG_FUNC();
+
+    if (NVNGXProxy::NVNGXModule() == nullptr)
+        NVNGXProxy::InitNVNGX();
+
+    if (NVNGXProxy::NVNGXModule() != nullptr && NVNGXProxy::VULKAN_RequiredExtensions() != nullptr)
+    {
+        auto result = NVNGXProxy::VULKAN_RequiredExtensions()(OutInstanceExtCount, OutInstanceExts, OutDeviceExtCount,
+                                                              OutDeviceExts);
+        LOG_INFO("NVNGXProxy::VULKAN_RequiredExtensions result: {0:X}, instance {1}, device {2}", (UINT) result,
+                 OutInstanceExtCount != nullptr ? *OutInstanceExtCount : 0,
+                 OutDeviceExtCount != nullptr ? *OutDeviceExtCount : 0);
+        return result;
+    }
+
+    LOG_INFO("No NVNGX VULKAN_RequiredExtensions, returning none");
+
+    if (OutInstanceExtCount != nullptr)
+        *OutInstanceExtCount = 0;
+
+    if (OutDeviceExtCount != nullptr)
+        *OutDeviceExtCount = 0;
+
+    return NVSDK_NGX_Result_Success;
+}
+
 NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_VULKAN_Init_Ext2(
     unsigned long long InApplicationId, const wchar_t* InApplicationDataPath, VkInstance InInstance,
     VkPhysicalDevice InPD, VkDevice InDevice, PFN_vkGetInstanceProcAddr InGIPA, PFN_vkGetDeviceProcAddr InGDPA,
