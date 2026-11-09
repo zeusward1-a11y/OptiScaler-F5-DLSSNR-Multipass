@@ -2,6 +2,7 @@
 
 #include "DLSSG_Dx12.h"
 #include "Kcd2Hdr.h"
+#include "DlssgGameCamera.h"
 
 #include <hudfix/Hudfix_Dx12.h>
 #include <menu/menu_overlay_dx.h>
@@ -522,30 +523,18 @@ bool DLSSG_Dx12::Dispatch()
     constData.cameraNear = _cameraNear[fIndex];
     constData.cameraFar = _cameraFar[fIndex];
 
-    if (_haveGameCamera[fIndex])
+    // The game's projection and camera motion, not its position or vectors (DlssgGameCamera.h: those wake DLSS-G's scene
+    // change detection, which took quick turns for cuts)
+    if (_haveGameCamera[fIndex] && dlssg_camera::HasPerspective(_gameCamera[fIndex]))
     {
         const auto& camera = _gameCamera[fIndex];
-        constData.cameraViewToClip = camera.cameraViewToClip;
-        constData.clipToCameraView = camera.clipToCameraView;
-        constData.clipToLensClip = camera.clipToLensClip;
-        constData.clipToPrevClip = camera.clipToPrevClip;
-        constData.prevClipToClip = camera.prevClipToClip;
-        constData.cameraPos = camera.cameraPos;
-        constData.cameraUp = camera.cameraUp;
-        constData.cameraRight = camera.cameraRight;
-        constData.cameraFwd = camera.cameraFwd;
-        constData.cameraPinholeOffset = camera.cameraPinholeOffset;
-        constData.cameraNear = camera.cameraNear;
-        constData.cameraFar = camera.cameraFar;
-        constData.cameraFOV = camera.cameraFOV;
-        constData.cameraAspectRatio = camera.cameraAspectRatio;
-        constData.depthInverted = camera.depthInverted;
-        constData.cameraMotionIncluded = camera.cameraMotionIncluded;
+        dlssg_camera::ApplyMatrices(constData, camera);
         static bool reported = false;
         if (!reported)
         {
             reported = true;
-            LOG_INFO("Vulkan DLSSG uses the SR frame's original camera matrices (near {}, far {}, FOV {})",
+            LOG_INFO("Vulkan DLSSG uses the SR frame's camera matrices, not its position or vectors (near {}, far {}, "
+                     "FOV {})",
                      camera.cameraNear, camera.cameraFar, camera.cameraFOV);
         }
     }
