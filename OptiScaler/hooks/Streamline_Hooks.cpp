@@ -30,6 +30,8 @@
 namespace
 {
 thread_local const sl::Preferences* gamePluginPreferences = nullptr;
+thread_local sl::Constants gameSrCamera {};
+thread_local bool haveGameSrCamera = false;
 
 // Detours supports only one in-flight transaction per process at a time (its own docs: only one
 // thread may perform DetourTransactionBegin/Attach/Detach/Commit at once). hookDlss/hookDlssg/
@@ -1301,9 +1303,40 @@ sl::Result StreamlineHooks::hkslSetConstants(const sl::Constants& values, const 
     std::scoped_lock lock(setConstantsMutex);
     LOG_TRACE("called with frameIndex: {}, viewport: {}", (unsigned int) frame, (unsigned int) viewport);
 
+    if (State::Instance().activeFgInput == FGInput::Upscaler &&
+        Config::Instance()->DlssNrNativeFrameGenerationOnly.value_or_default())
+    {
+        // Only fields in Constants v1: do not read later-version extension fields.
+        gameSrCamera.cameraViewToClip = values.cameraViewToClip;
+        gameSrCamera.clipToCameraView = values.clipToCameraView;
+        gameSrCamera.clipToLensClip = values.clipToLensClip;
+        gameSrCamera.clipToPrevClip = values.clipToPrevClip;
+        gameSrCamera.prevClipToClip = values.prevClipToClip;
+        gameSrCamera.cameraPos = values.cameraPos;
+        gameSrCamera.cameraUp = values.cameraUp;
+        gameSrCamera.cameraRight = values.cameraRight;
+        gameSrCamera.cameraFwd = values.cameraFwd;
+        gameSrCamera.cameraPinholeOffset = values.cameraPinholeOffset;
+        gameSrCamera.cameraNear = values.cameraNear;
+        gameSrCamera.cameraFar = values.cameraFar;
+        gameSrCamera.cameraFOV = values.cameraFOV;
+        gameSrCamera.cameraAspectRatio = values.cameraAspectRatio;
+        gameSrCamera.depthInverted = values.depthInverted;
+        gameSrCamera.cameraMotionIncluded = values.cameraMotionIncluded;
+        haveGameSrCamera = true;
+    }
+
     State::Instance().slFGInputs.setConstants(values, (uint32_t) frame);
 
     return o_slSetConstants(values, frame, viewport);
+}
+
+bool StreamlineHooks::TakeGameCameraConstants(sl::Constants& camera)
+{
+    if (!std::exchange(haveGameSrCamera, false))
+        return false;
+    camera = gameSrCamera;
+    return true;
 }
 
 bool StreamlineHooks::hkcommon_slOnPluginLoad(sl::param::IParameters* params, const char* loaderJSON,
@@ -2212,6 +2245,12 @@ void StreamlineHooks::hookInterposer(HMODULE slInterposer)
 
                     if (o_slSetConstants != nullptr)
                         DetourAttach(&(PVOID&) o_slSetConstants, hkslSetConstants);
+                }
+                else if (State::Instance().activeFgInput == FGInput::Upscaler &&
+                         Config::Instance()->DlssNrNativeFrameGenerationOnly.value_or_default() &&
+                         o_slSetConstants != nullptr)
+                {
+                    DetourAttach(&(PVOID&) o_slSetConstants, hkslSetConstants);
                 }
 
                 if (State::Instance().activeFgInput == FGInput::DLSSG)

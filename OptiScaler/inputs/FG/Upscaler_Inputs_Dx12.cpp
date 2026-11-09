@@ -4,6 +4,8 @@
 #include <resource_tracking/ResTrack_dx12.h>
 #include "shaders/depth_scale/DS_Dx12.h"
 #include "MathUtils.h"
+#include <hooks/Streamline_Hooks.h>
+#include <framegen/dlssg/DLSSG_Dx12.h>
 
 #include "shaders/dlssnr/DlssNr_Views.h"
 
@@ -225,6 +227,14 @@ void UpscalerInputsDx12::UpscaleStart(ID3D12GraphicsCommandList* InCmdList, NVSD
     InParameters->Get(NVSDK_NGX_Parameter_Jitter_Offset_Y, &jitterY);
 
     fg->StartNewFrame();
+
+    if (auto dlssg = dynamic_cast<DLSSG_Dx12*>(fg); dlssg != nullptr)
+    {
+        sl::Constants camera {};
+        const bool haveCamera = cfg.DlssNrNativeFrameGenerationOnly.value_or_default() &&
+                                StreamlineHooks::TakeGameCameraConstants(camera);
+        dlssg->SetGameCameraConstants(haveCamera ? &camera : nullptr);
+    }
 
     auto aspectRatio = (float) pictureWidth / (float) pictureHeight;
     fg->SetCameraValues(cameraNear, cameraFar, cameraVFov, aspectRatio, meterFactor);

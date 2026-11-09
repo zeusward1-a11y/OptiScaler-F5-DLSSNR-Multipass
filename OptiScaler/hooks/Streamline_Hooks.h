@@ -130,6 +130,9 @@ enum class BufferType : uint64_t
 class StreamlineHooks
 {
   public:
+    // Same-thread SR evaluate consumes the camera captured by slSetConstants.
+    // This transfers metadata only; Upscaler input remains the FG frame owner.
+    static bool TakeGameCameraConstants(sl::Constants& camera);
     typedef void* (*PFN_slGetPluginFunction)(const char* functionName);
     typedef bool (*PFN_slOnPluginLoad)(sl::param::IParameters* params, const char* loaderJSON, const char** pluginJSON);
     typedef sl::Result (*PFN_slSetData)(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer);

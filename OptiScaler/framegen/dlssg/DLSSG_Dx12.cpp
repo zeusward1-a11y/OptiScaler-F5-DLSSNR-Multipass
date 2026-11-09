@@ -522,6 +522,34 @@ bool DLSSG_Dx12::Dispatch()
     constData.cameraNear = _cameraNear[fIndex];
     constData.cameraFar = _cameraFar[fIndex];
 
+    if (_haveGameCamera[fIndex])
+    {
+        const auto& camera = _gameCamera[fIndex];
+        constData.cameraViewToClip = camera.cameraViewToClip;
+        constData.clipToCameraView = camera.clipToCameraView;
+        constData.clipToLensClip = camera.clipToLensClip;
+        constData.clipToPrevClip = camera.clipToPrevClip;
+        constData.prevClipToClip = camera.prevClipToClip;
+        constData.cameraPos = camera.cameraPos;
+        constData.cameraUp = camera.cameraUp;
+        constData.cameraRight = camera.cameraRight;
+        constData.cameraFwd = camera.cameraFwd;
+        constData.cameraPinholeOffset = camera.cameraPinholeOffset;
+        constData.cameraNear = camera.cameraNear;
+        constData.cameraFar = camera.cameraFar;
+        constData.cameraFOV = camera.cameraFOV;
+        constData.cameraAspectRatio = camera.cameraAspectRatio;
+        constData.depthInverted = camera.depthInverted;
+        constData.cameraMotionIncluded = camera.cameraMotionIncluded;
+        static bool reported = false;
+        if (!reported)
+        {
+            reported = true;
+            LOG_INFO("Vulkan DLSSG uses the SR frame's original camera matrices (near {}, far {}, FOV {})",
+                     camera.cameraNear, camera.cameraFar, camera.cameraFOV);
+        }
+    }
+
     constData.jitterOffset.x = _jitterX[fIndex];
     constData.jitterOffset.y = _jitterY[fIndex];
 

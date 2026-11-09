@@ -17,6 +17,8 @@ class DLSSG_Dx12 : public virtual IFGFeature_Dx12
     ID3D12Fence* dlssgFence[BUFFER_COUNT] = {};
     UINT64 lastOptionFrame = 0;
     bool _resourcesRetained = false; // Deactivate left DLSS-G's resources for the next Activate
+    sl::Constants _gameCamera[BUFFER_COUNT] {};
+    bool _haveGameCamera[BUFFER_COUNT] {};
 
     bool Dispatch();
 
@@ -25,6 +27,13 @@ class DLSSG_Dx12 : public virtual IFGFeature_Dx12
     void CreateObjects(ID3D12Device* InDevice) override final;
 
   public:
+    void SetGameCameraConstants(const sl::Constants* camera)
+    {
+        const auto slot = GetIndex();
+        _haveGameCamera[slot] = camera != nullptr;
+        if (camera != nullptr)
+            _gameCamera[slot] = *camera;
+    }
     // IFGFeature
     const char* Name() override final { return "DLSSG"; };
     feature_version Version() override final;
