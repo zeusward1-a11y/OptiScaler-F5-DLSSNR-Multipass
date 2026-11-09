@@ -54,6 +54,19 @@ int Sl_Inputs::IndexForFrameId(uint32_t frameId) const
 bool Sl_Inputs::setConstants(const sl::Constants& values, uint32_t frameId)
 {
     auto& state = State::Instance();
+    // An SR-only Streamline game still calls slSetConstants. With Upscaler input,
+    // UpscaleStart owns the FG frame boundary and its captured depth/motion.
+    // Advancing it here too clears those slots and mixes two frame ID sequences.
+    if (state.activeFgInput != FGInput::DLSSG && state.activeFgInput != FGInput::NvngxFG)
+    {
+        static bool reportedUpscaler = false;
+        if (state.activeFgInput == FGInput::Upscaler && !reportedUpscaler)
+        {
+            reportedUpscaler = true;
+            LOG_INFO("Streamline SR constants leave FG state unchanged: Upscaler input owns its frame boundary");
+        }
+        return false;
+    }
     auto fgOutput = state.CurrentFG();
 
     if (fgOutput == nullptr)
@@ -305,6 +318,9 @@ static std::optional<FG_ResourceType> GetResourceType(sl::BufferType type)
 bool Sl_Inputs::reportResource(const sl::ResourceTag& tag, void* cmdBuffer, uint32_t frameId)
 {
     auto& state = State::Instance();
+    // SR tags belong to the game's runtime, not the Upscaler input's FG ring.
+    if (state.activeFgInput != FGInput::DLSSG && state.activeFgInput != FGInput::NvngxFG)
+        return false;
     state.dlssgLastFrame = state.fgLastFrame;
 
     auto fgOutput = state.CurrentFG();

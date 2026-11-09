@@ -410,7 +410,10 @@ bool DLSSG_Dx12::Dispatch()
     // Boost when Optical F5Low's low latency stands aside for us and the player asked for it (Boost)
     reflexConst.mode = native::lowlatency::WantsBoostForFrameGeneration() ? sl::ReflexMode::eLowLatencyWithBoost
                                                                            : sl::ReflexMode::eLowLatency;
-    reflexConst.useMarkersToOptimize = ReflexHooks::gameIsSendingMarkers();
+    // FGPresent supplies OptiScaler's own tokens when game markers are disabled.
+    // Do not optimize this runtime's pacing against the other runtime's markers.
+    reflexConst.useMarkersToOptimize = Config::Instance()->FGDLSSGUseGamesReflexMarkers.value_or_default() &&
+                                       ReflexHooks::gameIsSendingMarkers();
 
     auto reflexSetOptionsResult = StreamlineProxy::ReflexSetOptions()(reflexConst);
 
